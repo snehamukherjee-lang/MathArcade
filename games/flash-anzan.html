@@ -262,6 +262,7 @@
   document.getElementById('answer-input').addEventListener('keydown', e => { if (e.key === 'Enter') submitAnswer(); });
 
   function startGame() {
+    if (MathArcade.Audio) MathArcade.Audio.playCoin();
     config = {
       op: document.getElementById('op-select').value,
       digits: parseInt(document.getElementById('digits-select').value),
@@ -342,6 +343,7 @@
       color = colors[op] || 'var(--neon-green)';
       el.innerHTML = `<span class="flash-op">${ops[op].sym}</span><span style="color:${color}">${gameNumbers[currentFlashIdx]}</span>`;
     }
+    if (MathArcade.Audio) MathArcade.Audio.playBlip();
 
     // Timer bar animation
     bar.style.transition = 'none';
@@ -403,10 +405,12 @@
 
     const isCorrect = userAnswer === correct;
     if (isCorrect) {
+      if (MathArcade.Audio) MathArcade.Audio.playCorrect();
       score += 100 + Math.floor(1000 / config.dur * 10);
       correctCount++;
       showNotif('✓ CORRECT!', 'green');
     } else {
+      if (MathArcade.Audio) MathArcade.Audio.playWrong();
       showNotif(`✗ WRONG! ANSWER: ${correct}`, 'pink');
     }
     roundResults.push(isCorrect);
@@ -431,6 +435,11 @@
     const timeMs = Date.now() - gameStartTime;
     const emoji = pct >= 80 ? '🏆' : pct >= 60 ? '⭐' : pct >= 40 ? '💪' : '😅';
     const title = pct >= 80 ? 'AMAZING!' : pct >= 60 ? 'GREAT JOB!' : pct >= 40 ? 'KEEP TRAINING!' : 'PRACTICE MORE!';
+
+    if (MathArcade.Audio) {
+      if (pct >= 60) MathArcade.Audio.playWin();
+      else setTimeout(() => MathArcade.Audio.playWrong(), 200);
+    }
 
     document.getElementById('result-emoji').textContent = emoji;
     document.getElementById('result-title').textContent = title;
