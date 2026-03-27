@@ -186,6 +186,7 @@
   document.getElementById('btn-win-new').addEventListener('click', () => { document.getElementById('screen-win').classList.add('hidden'); document.getElementById('screen-settings').classList.remove('hidden'); document.getElementById('hud').style.display = 'none'; });
 
   function startGame() {
+    if (MathArcade.Audio) MathArcade.Audio.playCoin();
     errors = 0;
     startTime = Date.now();
     generatePuzzle();
@@ -368,7 +369,12 @@
   }
 
   function inputNumber(n) {
-    if (!selectedCell) { showNotif('SELECT A CELL!', 'cyan'); return; }
+    if (!selectedCell) { 
+      if (MathArcade.Audio) MathArcade.Audio.playWrong();
+      showNotif('SELECT A CELL!', 'cyan'); 
+      return; 
+    }
+    if (MathArcade.Audio) MathArcade.Audio.playBlip();
     const [r, c] = selectedCell;
     userGrid[r][c] = n;
     updateGridDisplay();
@@ -405,6 +411,7 @@
     document.getElementById('hud-errors').textContent = errors;
     const filled = userGrid.flat().filter(v => v > 0).length;
     if (allCorrect && filled === gridSize * gridSize) {
+      if (MathArcade.Audio) MathArcade.Audio.playWin();
       stopTimer();
       const timeMs = Date.now() - startTime;
       const score = Math.max(100, 10000 - errors * 500 - Math.floor(timeMs / 1000) * 10);
@@ -416,6 +423,7 @@
       document.getElementById('screen-win').classList.remove('hidden');
       document.getElementById('hud').style.display = 'none';
     } else {
+      if (MathArcade.Audio) MathArcade.Audio.playWrong();
       showNotif(allCorrect ? 'FILL ALL CELLS FIRST!' : 'SOME ERRORS — KEEP TRYING!', allCorrect ? 'cyan' : 'pink');
     }
   }
