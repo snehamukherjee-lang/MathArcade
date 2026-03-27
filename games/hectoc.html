@@ -313,8 +313,9 @@
   let totalScore = 0;
   let gameStartTime = 0;
   let timerInterval = null;
-  let solutions = []; // {puzzle, expr, time}
+  let solutions = []; // {puzzle, expr, time, solved, correctExpr}
   let multiEntries = []; // simulated multiplayer entries
+  let incorrectAttempts = 0;
 
   // MP mode toggle
   document.getElementById('mode-select').addEventListener('change', e => {
@@ -346,6 +347,7 @@
   exprInput.addEventListener('keydown', e => { if (e.key === 'Enter') submitExpression(); });
 
   window.insertOp = function(op) {
+    if (MathArcade.Audio) MathArcade.Audio.playBlip();
     const start = exprInput.selectionStart;
     const end = exprInput.selectionEnd;
     const val = exprInput.value;
@@ -364,27 +366,28 @@
   };
 
   // ---- PUZZLE GENERATION ----
-  // Hectoc: generate a 6-digit string and verify it has at least one solution
-  const KNOWN_SOLVABLE = [
-    [1,2,3,4,5,6],[1,2,3,4,5,8],[1,2,3,4,6,7],[1,2,3,5,6,7],[1,2,4,5,6,7],
-    [1,2,3,4,7,8],[1,2,3,5,7,8],[1,2,4,5,7,8],[1,3,4,5,6,7],[2,3,4,5,6,7],
-    [1,2,3,6,7,8],[1,2,4,6,7,8],[1,3,4,5,7,8],[2,3,4,5,7,8],[1,2,5,6,7,8],
-    [1,3,4,6,7,8],[2,3,4,6,7,8],[1,4,5,6,7,8],[2,3,5,6,7,8],[3,4,5,6,7,8],
-    [1,2,3,4,5,9],[2,4,6,8,1,3],[3,5,7,9,2,4],[1,5,9,2,6,3],[8,7,6,5,4,3],
-    [9,8,7,6,5,4],[5,5,5,5,5,5],[4,4,4,4,4,4],[3,3,3,3,3,3],[2,2,2,2,2,2],
-    [1,1,1,1,1,1],[9,1,2,3,4,5],[8,1,2,3,4,5],[7,1,2,3,4,5],[6,1,2,3,4,5],
+  const KNOWN_SOLVABLE_WITH_ANSWERS = [
+    {d: [1, 2, 3, 4, 6, 7], a: "1-2+34+67"}, {d: [1, 2, 3, 5, 6, 7], a: "1+2+3×5×6+7"},
+    {d: [1, 2, 3, 5, 7, 8], a: "1+2+3×5×7-8"}, {d: [1, 2, 4, 5, 7, 8], a: "1-2+45+7×8"},
+    {d: [1, 3, 4, 5, 6, 7], a: "13+4×5+67"}, {d: [2, 3, 4, 5, 6, 7], a: "23×4+56÷7"},
+    {d: [1, 2, 4, 6, 7, 8], a: "1+24+67+8"}, {d: [1, 3, 4, 5, 7, 8], a: "1+34+57+8"},
+    {d: [2, 3, 4, 5, 7, 8], a: "2-3+45+7×8"}, {d: [1, 2, 5, 6, 7, 8], a: "1×25+67+8"},
+    {d: [1, 3, 4, 6, 7, 8], a: "1-3+4×6+78"}, {d: [1, 4, 5, 6, 7, 8], a: "14+5×6+7×8"},
+    {d: [2, 3, 5, 6, 7, 8], a: "23+5-6+78"}, {d: [3, 5, 7, 9, 2, 4], a: "3×5+79+2+4"},
+    {d: [1, 5, 9, 2, 6, 3], a: "1+5+92+6÷3"}, {d: [8, 7, 6, 5, 4, 3], a: "8+76×5÷4-3"},
+    {d: [9, 8, 7, 6, 5, 4], a: "98+7-6+5-4"}, {d: [5, 5, 5, 5, 5, 5], a: "55+55-5-5"},
+    {d: [1, 1, 1, 1, 1, 1], a: "1×111-11"}, {d: [9, 1, 2, 3, 4, 5], a: "91+2+3×4-5"},
+    {d: [8, 1, 2, 3, 4, 5], a: "8×12+3-4+5"}, {d: [7, 1, 2, 3, 4, 5], a: "71+2×3×4+5"},
+    {d: [6, 1, 2, 3, 4, 5], a: "61-2×3+45"}
   ];
 
   function generatePuzzle() {
-    // Randomly pick from known-solvable or generate random 6 digits 1-9
-    if (Math.random() < 0.5 && KNOWN_SOLVABLE.length) {
-      const template = KNOWN_SOLVABLE[randomInt(0, KNOWN_SOLVABLE.length - 1)];
-      return [...template];
-    }
-    return Array.from({length:6}, () => randomInt(1,9));
+    const item = KNOWN_SOLVABLE_WITH_ANSWERS[randomInt(0, KNOWN_SOLVABLE_WITH_ANSWERS.length - 1)];
+    return { digits: [...item.d], answer: item.a };
   }
 
   function startGame() {
+    if (MathArcade.Audio) MathArcade.Audio.playCoin();
     totalPuzzles = parseInt(document.getElementById('puzzles-select').value);
     puzzles = Array.from({length: totalPuzzles}, () => generatePuzzle());
     currentPuzzleIdx = 0; solvedCount = 0; totalScore = 0; solutions = [];
@@ -408,7 +411,9 @@
   }
 
   function loadPuzzle() {
-    const digits = puzzles[currentPuzzleIdx];
+    const puzzleObj = puzzles[currentPuzzleIdx];
+    const digits = puzzleObj.digits;
+    incorrectAttempts = 0;
     document.getElementById('puzzle-num').textContent = currentPuzzleIdx + 1;
     document.getElementById('puzzle-total').textContent = totalPuzzles;
     document.getElementById('hud-puzzle').textContent = digits.join('');
@@ -428,6 +433,8 @@
 
   function skipPuzzle() {
     showNotif('PUZZLE SKIPPED!', 'purple');
+    const puzzleObj = puzzles[currentPuzzleIdx];
+    solutions.push({ puzzle: puzzleObj.digits.join(''), expr: 'SKIPPED', solved: false, correctExpr: puzzleObj.answer, time: Date.now() - gameStartTime });
     currentPuzzleIdx++;
     if (currentPuzzleIdx >= totalPuzzles) { endGame(); return; }
     loadPuzzle();
@@ -464,23 +471,48 @@
     }
   }
 
+  function handleIncorrectAttempt(rawExpr) {
+    incorrectAttempts++;
+    const puzzleObj = puzzles[currentPuzzleIdx];
+    if (incorrectAttempts >= 3) {
+      showNotif(`TOO MANY TRIES! ANSWER WAS ${puzzleObj.answer}`, 'pink');
+      solutions.push({ puzzle: puzzleObj.digits.join(''), expr: rawExpr, solved: false, correctExpr: puzzleObj.answer, time: Date.now() - gameStartTime });
+      setTimeout(() => {
+        currentPuzzleIdx++;
+        if (currentPuzzleIdx >= totalPuzzles) endGame();
+        else loadPuzzle();
+      }, 1500);
+    }
+  }
+
   function submitExpression() {
+    if (incorrectAttempts >= 3) return; // ignore submits if already failed
     const raw = exprInput.value.trim();
     if (!raw) { showNotif('ENTER AN EXPRESSION!', 'purple'); return; }
 
-    const digits = puzzles[currentPuzzleIdx];
+    const puzzleObj = puzzles[currentPuzzleIdx];
+    const digits = puzzleObj.digits;
     const validation = validateExpression(raw, digits);
     const feedbackEl = document.getElementById('expr-feedback');
 
     if (!validation.valid) {
+      if (MathArcade.Audio) MathArcade.Audio.playWrong();
       feedbackEl.textContent = '✗ ' + validation.reason;
       feedbackEl.style.color = 'var(--neon-pink)';
       showNotif(validation.reason, 'pink');
+      handleIncorrectAttempt(raw);
       return;
     }
 
     let result;
-    try { result = safeEval(raw); } catch { showNotif('INVALID EXPRESSION!', 'pink'); return; }
+    try { 
+      result = safeEval(raw); 
+    } catch { 
+      if (MathArcade.Audio) MathArcade.Audio.playWrong();
+      showNotif('INVALID EXPRESSION!', 'pink'); 
+      handleIncorrectAttempt(raw);
+      return; 
+    }
 
     if (Math.abs(result - 100) < 0.0001) {
       // Correct!
@@ -488,7 +520,7 @@
       const pts = Math.max(100, 1000 - Math.floor(puzzleTime / 1000) * 5);
       totalScore += pts;
       solvedCount++;
-      solutions.push({ puzzle: digits.join(''), expr: raw, time: puzzleTime });
+      solutions.push({ puzzle: digits.join(''), expr: raw, solved: true, correctExpr: puzzleObj.answer, time: puzzleTime });
       document.getElementById('hud-solved').textContent = solvedCount;
       document.getElementById('hud-score').textContent = totalScore;
 
@@ -499,6 +531,7 @@
       ).join('');
 
       showNotif(`✓ BLAZING! +${pts} PTS`, 'green');
+      if (MathArcade.Audio) MathArcade.Audio.playCorrect();
       feedbackEl.textContent = '✓ CORRECT! = 100';
       feedbackEl.style.color = 'var(--neon-green)';
 
@@ -511,9 +544,11 @@
         else loadPuzzle();
       }, 1200);
     } else {
+      if (MathArcade.Audio) MathArcade.Audio.playWrong();
       feedbackEl.textContent = `✗ RESULT IS ${result}, NOT 100`;
       feedbackEl.style.color = 'var(--neon-pink)';
       showNotif(`NOT 100! GOT ${result}`, 'pink');
+      handleIncorrectAttempt(raw);
     }
   }
 
@@ -538,7 +573,8 @@
   }
 
   function showHint() {
-    const digits = puzzles[currentPuzzleIdx];
+    const puzzleObj = puzzles[currentPuzzleIdx];
+    const digits = puzzleObj.digits;
     const hints = [
       `Try concatenating adjacent digits: e.g., ${digits[0]}${digits[1]} or ${digits[2]}${digits[3]}`,
       `Work towards 100: think (a×b) + c or (a+b) × c`,
@@ -589,6 +625,11 @@
     document.getElementById('screen-game').classList.add('hidden');
     document.getElementById('screen-results').classList.remove('hidden');
     document.getElementById('hud').style.display = 'none';
+    
+    if (MathArcade.Audio) {
+      if (solvedCount > 0) MathArcade.Audio.playWin();
+      else setTimeout(() => MathArcade.Audio.playWrong(), 200);
+    }
 
     const timeMs = Date.now() - gameStartTime;
     document.getElementById('res-score').textContent = totalScore;
@@ -596,9 +637,20 @@
     document.getElementById('res-time').textContent = (timeMs/1000).toFixed(1) + 's';
 
     // Solutions display
+    document.getElementById('res-solutions').style.display = 'flex';
+    document.getElementById('res-solutions').style.flexDirection = 'column';
+    document.getElementById('res-solutions').style.gap = '8px';
+    document.getElementById('res-solutions').style.alignItems = 'center';
+
     document.getElementById('res-solutions').innerHTML = solutions.length
-      ? solutions.map(s => `<div class="solution-chip">📌 ${s.puzzle} → ${s.expr}</div>`).join('')
-      : '<div class="vt323" style="font-size:20px;color:var(--text-dim)">No puzzles solved — keep practicing!</div>';
+      ? solutions.map(s => {
+          if (s.solved) {
+            return `<div class="solution-chip" style="display:block;width:100%;max-width:400px;text-align:center;">📌 ${s.puzzle} → ${s.expr} <span class="neon-green">(✓)</span></div>`;
+          } else {
+            return `<div class="solution-chip" style="display:block;border-color:var(--neon-pink);color:var(--text-dim);width:100%;max-width:400px;text-align:center;">📌 ${s.puzzle} → ${s.expr} <span class="neon-pink">(✗)</span><br><span style="font-size:14px;color:var(--neon-green)">Answer: ${s.correctExpr} = 100</span></div>`;
+          }
+        }).join('')
+      : '<div class="vt323" style="font-size:20px;color:var(--text-dim)">No puzzles attempted — keep practicing!</div>';
 
     Leaderboard.submit('hectoc', totalScore, { correct: solvedCount, total: totalPuzzles, timeTaken: timeMs });
 
