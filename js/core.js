@@ -8,8 +8,8 @@ const MathArcade = (() => {
     get: (key, def = null) => {
       try { const v = localStorage.getItem(key); return v ? JSON.parse(v) : def; } catch { return def; }
     },
-    set: (key, val) => { try { localStorage.setItem(key, JSON.stringify(val)); } catch {} },
-    del: (key) => { try { localStorage.removeItem(key); } catch {} }
+    set: (key, val) => { try { localStorage.setItem(key, JSON.stringify(val)); } catch { } },
+    del: (key) => { try { localStorage.removeItem(key); } catch { } }
   };
 
   // ------- Session Management -------
@@ -249,9 +249,9 @@ const MathArcade = (() => {
         <span style="font-size:8px;color:var(--neon-pink);margin-left:8px;">v2.0</span>
       </div>
       <ul class="navbar-nav" id="main-nav">
-        <li><a href="../index.html" ${activePage==='home'?'style="color:var(--neon-green)"':''}>HOME</a></li>
-        <li><a href="../pages/classroom.html" ${activePage==='classroom'?'style="color:var(--neon-green)"':''}>CLASSROOM</a></li>
-        <li><a href="../pages/leaderboard.html" ${activePage==='leaderboard'?'style="color:var(--neon-green)"':''}>LEADERBOARD</a></li>
+        <li><a href="../index.html" ${activePage === 'home' ? 'style="color:var(--neon-green)"' : ''}>HOME</a></li>
+        <li><a href="../pages/classroom.html" ${activePage === 'classroom' ? 'style="color:var(--neon-green)"' : ''}>CLASSROOM</a></li>
+        <li><a href="../pages/leaderboard.html" ${activePage === 'leaderboard' ? 'style="color:var(--neon-green)"' : ''}>LEADERBOARD</a></li>
         ${session ? `<li><span style="color:var(--neon-yellow);font-size:7px">▶ ${name}</span></li>
         <li><button class="btn btn-sm btn-pink" onclick="MathArcade.Session.logout();window.location.href='../index.html'">EXIT</button></li>` :
         `<li><button class="btn btn-sm btn-green" onclick="window.location.href='../index.html'">LOGIN</button></li>`}
